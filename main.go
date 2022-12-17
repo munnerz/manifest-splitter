@@ -20,11 +20,12 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/munnerz/manifest-splitter/discovery"
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 var (
-	kubeconfig string
-	outputDir string
+	kubeconfig  string
+	outputDir   string
 	expandLists bool
 
 	scheme = runtime.NewScheme()
@@ -162,7 +163,7 @@ func populateNamespacedField(inspector discovery.ResourceInspector, files map[st
 }
 
 func validateResourceFiles(files map[string][]resource) error {
-	type namespacedName struct{name, namespace string}
+	type namespacedName struct{ name, namespace string }
 	alreadyContains := func(list []namespacedName, toFind namespacedName) bool {
 		for _, e := range list {
 			if toFind == e {
@@ -212,7 +213,8 @@ func validateResource(r *resource) error {
 		return fmt.Errorf("namespaced resource %q missing metadata.namespace field", r)
 	}
 	if !r.namespaced && r.obj.GetNamespace() != "" {
-		return fmt.Errorf("non-namespaced resource %q specifies metadata.namespace field", r)
+		r.obj.SetNamespace("")
+		//return fmt.Errorf("non-namespaced resource %q specifies metadata.namespace field", r)
 	}
 
 	return nil
@@ -233,12 +235,12 @@ func validateResourceList(r *resource) error {
 	if err := r.obj.EachListItem(func(obj runtime.Object) error {
 		// make a copy of the resource
 		inner := &resource{
-			idx: r.idx,
-			inputFilename: r.inputFilename,
-			data: r.data,
-			format: r.format,
-			obj: obj.(*unstructured.Unstructured),
-			namespaced: r.namespaced,
+			idx:               r.idx,
+			inputFilename:     r.inputFilename,
+			data:              r.data,
+			format:            r.format,
+			obj:               obj.(*unstructured.Unstructured),
+			namespaced:        r.namespaced,
 			listNamespaceName: r.listNamespaceName,
 		}
 		// ensure that all resources have the same namespace
@@ -269,12 +271,12 @@ type resource struct {
 	// idx is the index of the resource in the manifest input file.
 	// this is used to name the output file if a resource is a list, as
 	// lists don't have declared names.
-	idx int
+	idx           int
 	inputFilename string
 
-	data []byte
-	format format
-	obj *unstructured.Unstructured
+	data       []byte
+	format     format
+	obj        *unstructured.Unstructured
 	namespaced bool
 
 	// listNamespaceName is only used if obj.IsList() == true.
@@ -326,11 +328,11 @@ func decodeResourceManifest(input string, r io.Reader) ([]resource, error) {
 					return err
 				}
 				resources = append(resources, resource{
-					idx: idx,
+					idx:           idx,
 					inputFilename: input,
-					data: data,
-					format: format,
-					obj:  u,
+					data:          data,
+					format:        format,
+					obj:           u,
 				})
 				idx++
 				return nil
@@ -339,11 +341,11 @@ func decodeResourceManifest(input string, r io.Reader) ([]resource, error) {
 		}
 
 		resources = append(resources, resource{
-			idx: idx,
+			idx:           idx,
 			inputFilename: input,
-			data: bytes,
-			format: format,
-			obj:  &u,
+			data:          bytes,
+			format:        format,
+			obj:           &u,
 		})
 		idx++
 	}
